@@ -1,0 +1,6 @@
+Manifest-Version: 1.0
+Created-By: wangqi
+Agent-Class: code.qijiqiguai.java.agent.MyCustomAgent
+Can-Redefine-Classes: true
+Can-Retransform-Classes: true
+Premain-Class: code.qijiqiguai.java.agent.MyCustomAgent
