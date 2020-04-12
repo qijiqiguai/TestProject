@@ -2,8 +2,10 @@ package code.qijiqiguai.java.tools;
 
 
 import com.jcraft.jsch.Session;
+import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
+import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.diff.RawTextComparator;
@@ -39,14 +41,14 @@ public class GitUtilClass {
         File RepoGitDir = new File(localRepoGitConfig);
         Repository repo = null;
         try {
-//            JschConfigSessionFactory jschConfigSessionFactory = new JschConfigSessionFactory() {
-//                @Override
-//                protected void configure(OpenSshConfig.Host hc, Session session) {
-//                    session.setConfig("StrictHostKeyChecking","no");
-//                }
-//            };
-//            SshSessionFactory.setInstance(jschConfigSessionFactory);
-//
+            JschConfigSessionFactory jschConfigSessionFactory = new JschConfigSessionFactory() {
+                @Override
+                protected void configure(OpenSshConfig.Host hc, Session session) {
+                    session.setConfig("StrictHostKeyChecking","no");
+                }
+            };
+            SshSessionFactory.setInstance(jschConfigSessionFactory);
+
 //            Git.cloneRepository()
 //                    .setURI(remoteRepoURI)
 //                    .setDirectory(new File(localRepoPath))
@@ -54,7 +56,7 @@ public class GitUtilClass {
 
             repo = new FileRepository(RepoGitDir.getAbsolutePath());
             Git git = new Git(repo);
-
+            git.pull().call();
 //            Status status = git.status().call();
 //            System.out.println("Git Change: " + status.getChanged());
 //            System.out.println("Git Modified: " + status.getModified());
@@ -89,27 +91,29 @@ public class GitUtilClass {
 //                System.out.println("commitID:"+commitID);
 //            }
 
-            Repository repository = git.getRepository();
-            List<RevCommit> list=new ArrayList<RevCommit>();
-            Iterable<RevCommit> iterableDiff = git.log().addPath("FrameDemo/pom.xml").setMaxCount(2).call();
-            for(RevCommit revCommit : iterableDiff){
-                list.add(revCommit);
-            }
-            if(list.size()==2){
-                AbstractTreeIterator newCommit=getAbstractTreeIterator(list.get(0),repository);
-                AbstractTreeIterator oldCommit=getAbstractTreeIterator(list.get(1),repository);
-                List<DiffEntry> diff=git.diff().setOldTree(oldCommit).setNewTree(newCommit).call();
-                ByteArrayOutputStream outputStream=new ByteArrayOutputStream();
-                DiffFormatter diffFormatter=new DiffFormatter(outputStream);
-                //设置比较器为忽略空白字符对比（Ignores all whitespace）
-                diffFormatter.setDiffComparator(RawTextComparator.WS_IGNORE_ALL);
-                diffFormatter.setRepository(repository); // 这里为什么还要设置它
-                for(DiffEntry diffEntry:diff){
-                    diffFormatter.format(diffEntry);
-                    System.out.println(outputStream.toString("UTF-8"));
-                    outputStream.reset();
-                }
-            }
+//            Repository repository = git.getRepository();
+//            List<RevCommit> list=new ArrayList<>();
+//            Iterable<RevCommit> iterableDiff = git.log().addPath("FrameDemo/pom.xml").setMaxCount(2).call();
+//            for(RevCommit revCommit : iterableDiff){
+//                list.add(revCommit);
+//            }
+//            if(list.size()==2){
+//                AbstractTreeIterator newCommit=getAbstractTreeIterator(list.get(0),repository);
+//                AbstractTreeIterator oldCommit=getAbstractTreeIterator(list.get(1),repository);
+//                List<DiffEntry> diff=git.diff().setOldTree(oldCommit).setNewTree(newCommit).call();
+//                ByteArrayOutputStream outputStream=new ByteArrayOutputStream();
+//                DiffFormatter diffFormatter=new DiffFormatter(outputStream);
+//                //设置比较器为忽略空白字符对比（Ignores all whitespace）
+//                diffFormatter.setDiffComparator(RawTextComparator.WS_IGNORE_ALL);
+//                diffFormatter.setRepository(repository); // 这里为什么还要设置它
+//                for(DiffEntry diffEntry:diff){
+//                    diffFormatter.format(diffEntry);
+//                    System.out.println(outputStream.toString("UTF-8"));
+//                    outputStream.reset();
+//                }
+//            }
+
+            checkoutBrunchToLocalTemp(git, "develop");
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
@@ -133,4 +137,12 @@ public class GitUtilClass {
         return treeParser;
     }
 
+    public static void checkoutBrunchToLocalTemp(Git git, String remoteBrunch) throws GitAPIException {
+        git.checkout().
+                setCreateBranch(true).
+                setName("temp_" + remoteBrunch + "_" + System.currentTimeMillis()).
+                setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK).
+                setStartPoint("origin/" + remoteBrunch).
+                call();
+    }
 }
