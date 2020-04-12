@@ -3,6 +3,7 @@ package code.qijiqiguai.java.tools;
 
 import com.jcraft.jsch.Session;
 import org.eclipse.jgit.api.CreateBranchCommand;
+import org.eclipse.jgit.api.DeleteTagCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -18,6 +19,7 @@ import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.JschConfigSessionFactory;
 import org.eclipse.jgit.transport.OpenSshConfig;
+import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.SshSessionFactory;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
@@ -26,6 +28,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 public class GitUtilClass {
@@ -58,7 +61,9 @@ public class GitUtilClass {
             Git git = new Git(repo);
             git.pull().call();
 
-            addTagFromBrunch(git, "master", "master_tag_test");
+            String s = "develop_tag_test,dev_tag_test2";
+            Set<String >actionSet = new HashSet<>(Arrays.asList(s.split(",")));
+            batchDelTags(git, actionSet);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -211,6 +216,32 @@ public class GitUtilClass {
 
         git.tag().setName(tag).call();
         git.push().setPushTags().call();
+    }
+
+    public static void batchDelTags(Git git, Set<String> tag) throws GitAPIException {
+        List<Ref> tagList = git.tagList().call();
+        List<String> tobeDel = new ArrayList<>();
+        tagList.forEach( one -> {
+            String tagName = one.getName().replaceFirst("refs/tags/", "");
+            if (tag.contains(tagName)) {
+                tobeDel.add(tagName);
+
+                try {
+                    git.tagDelete().setTags(tobeDel.toArray(new String[tobeDel.size()])).call();
+                } catch (GitAPIException e) {
+                    e.printStackTrace();
+                }
+
+                //delete branch 'branchToDelete' on remote 'origin'
+                RefSpec refSpec = new RefSpec().setSource(null).setDestination(one.getName());
+                try {
+                    git.push().setRefSpecs(refSpec).setRemote("origin").call();
+                } catch (GitAPIException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
     }
 
     public static String checkoutBrunchToLocalTemp(Git git, String remoteBrunch) throws GitAPIException {
