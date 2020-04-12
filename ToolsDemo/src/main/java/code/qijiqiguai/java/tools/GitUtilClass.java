@@ -10,6 +10,8 @@ import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.diff.RawTextComparator;
 import org.eclipse.jgit.internal.storage.file.FileRepository;
+import org.eclipse.jgit.lib.ObjectReader;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevTree;
@@ -113,7 +115,33 @@ public class GitUtilClass {
 //                }
 //            }
 
-            checkoutBrunchToLocalTemp(git, "develop");
+            String tempDev = checkoutBrunchToLocalTemp(git, "develop");
+            String tempMain = checkoutBrunchToLocalTemp(git, "master");
+//            String tempDev = "temp_develop_1586687104353";
+//            String tempMain = "temp_master_1586687104434";
+
+            // the diff works on TreeIterators, we prepare two for the two branches
+            AbstractTreeIterator oldTreeParser = prepareTreeParser(repo, "refs/heads/"+tempDev);
+            AbstractTreeIterator newTreeParser = prepareTreeParser(repo, "refs/heads/"+tempMain);
+
+            // then the procelain diff-command returns a list of diff entries
+            List<DiffEntry> diff = git.diff().setOldTree(oldTreeParser).setNewTree(newTreeParser).call();
+
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            DiffFormatter diffFormatter = new DiffFormatter(outputStream);
+            //设置比较器为忽略空白字符对比（Ignores all whitespace）
+            diffFormatter.setDiffComparator(RawTextComparator.WS_IGNORE_ALL);
+            // 这里为什么还要设置它
+            diffFormatter.setRepository(repo);
+            for(DiffEntry oneDiff : diff){
+                System.out.println( oneDiff );
+                diffFormatter.format( oneDiff );
+                System.out.println( outputStream.toString("UTF-8") );
+                outputStream.reset();
+            }
+
+            delLocalBrunch(git, tempMain);
+            delLocalBrunch(git, tempDev);
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
@@ -137,12 +165,39 @@ public class GitUtilClass {
         return treeParser;
     }
 
-    public static void checkoutBrunchToLocalTemp(Git git, String remoteBrunch) throws GitAPIException {
+    private static AbstractTreeIterator prepareTreeParser(Repository repository, String ref) throws IOException {
+        // from the commit we can build the tree which allows us to construct the TreeParser
+        Ref head = repository.exactRef(ref);
+        try (RevWalk walk = new RevWalk(repository)) {
+            RevCommit commit = walk.parseCommit(head.getObjectId());
+            RevTree tree = walk.parseTree(commit.getTree().getId());
+
+            CanonicalTreeParser treeParser = new CanonicalTreeParser();
+            try (ObjectReader reader = repository.newObjectReader()) {
+                treeParser.reset(reader, tree.getId());
+            }
+
+            walk.dispose();
+            return treeParser;
+        }
+    }
+
+    public static String checkoutBrunchToLocalTemp(Git git, String remoteBrunch) throws GitAPIException {
+        String tempLocalBrunchName = "temp_" + remoteBrunch + "_" + System.currentTimeMillis();
         git.checkout().
                 setCreateBranch(true).
-                setName("temp_" + remoteBrunch + "_" + System.currentTimeMillis()).
+                setName(tempLocalBrunchName).
                 setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK).
                 setStartPoint("origin/" + remoteBrunch).
                 call();
+        return tempLocalBrunchName;
+    }
+
+    public static void delLocalBrunch(Git git, String localBrunchName) throws GitAPIException, IOException {
+        String currentBranch = git.getRepository().getBranch();
+        if (localBrunchName.equals(currentBranch)) {
+            git.checkout().setName("master").call();
+        }
+        git.branchDelete().setForce(true).setBranchNames(localBrunchName).call();
     }
 }
