@@ -25,9 +25,7 @@ import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 
 public class GitUtilClass {
@@ -36,10 +34,10 @@ public class GitUtilClass {
     public static String remoteRepoURI = "git@github.com:qijiqiguai/TestProject.git";
 
     public static void main(String[] args) {
-        status();
+        testMain();
     }
 
-    public static void status() {
+    public static void testMain() {
         File RepoGitDir = new File(localRepoGitConfig);
         Repository repo = null;
         try {
@@ -59,13 +57,27 @@ public class GitUtilClass {
             repo = new FileRepository(RepoGitDir.getAbsolutePath());
             Git git = new Git(repo);
             git.pull().call();
-//            Status status = git.status().call();
+
+            addTagFromBrunch(git, "master", "master_tag_test");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (repo != null) {
+                repo.close();
+            }
+        }
+    }
+
+    public static void statusTest() {
+        //            Status status = git.status().call();
 //            System.out.println("Git Change: " + status.getChanged());
 //            System.out.println("Git Modified: " + status.getModified());
 //            System.out.println("Git UncommittedChanges: " + status.getUncommittedChanges());
 //            System.out.println("Git Untracked: " + status.getUntracked());
-//
-//
+    }
+
+    public static void compareTest1() {
 //            Iterable<RevCommit> iterable1 = git.log().setMaxCount(10).call();
 //            Iterator<RevCommit> iter = iterable1.iterator();
 //            while (iter.hasNext()){
@@ -114,41 +126,36 @@ public class GitUtilClass {
 //                    outputStream.reset();
 //                }
 //            }
+    }
 
-            String tempDev = checkoutBrunchToLocalTemp(git, "develop");
-            String tempMain = checkoutBrunchToLocalTemp(git, "master");
+    public static void compareBrunch(Git git) throws GitAPIException, IOException {
+        String tempDev = checkoutBrunchToLocalTemp(git, "develop");
+        String tempMain = checkoutBrunchToLocalTemp(git, "master");
 //            String tempDev = "temp_develop_1586687104353";
 //            String tempMain = "temp_master_1586687104434";
 
-            // the diff works on TreeIterators, we prepare two for the two branches
-            AbstractTreeIterator oldTreeParser = prepareTreeParser(repo, "refs/heads/"+tempDev);
-            AbstractTreeIterator newTreeParser = prepareTreeParser(repo, "refs/heads/"+tempMain);
+        // the diff works on TreeIterators, we prepare two for the two branches
+        AbstractTreeIterator oldTreeParser = prepareTreeParser(git.getRepository(), "refs/heads/"+tempDev);
+        AbstractTreeIterator newTreeParser = prepareTreeParser(git.getRepository(), "refs/heads/"+tempMain);
 
-            // then the procelain diff-command returns a list of diff entries
-            List<DiffEntry> diff = git.diff().setOldTree(oldTreeParser).setNewTree(newTreeParser).call();
+        // then the procelain diff-command returns a list of diff entries
+        List<DiffEntry> diff = git.diff().setOldTree(oldTreeParser).setNewTree(newTreeParser).call();
 
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            DiffFormatter diffFormatter = new DiffFormatter(outputStream);
-            //设置比较器为忽略空白字符对比（Ignores all whitespace）
-            diffFormatter.setDiffComparator(RawTextComparator.WS_IGNORE_ALL);
-            // 这里为什么还要设置它
-            diffFormatter.setRepository(repo);
-            for(DiffEntry oneDiff : diff){
-                System.out.println( oneDiff );
-                diffFormatter.format( oneDiff );
-                System.out.println( outputStream.toString("UTF-8") );
-                outputStream.reset();
-            }
-
-            delLocalBrunch(git, tempMain);
-            delLocalBrunch(git, tempDev);
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            if (repo != null) {
-                repo.close();
-            }
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        DiffFormatter diffFormatter = new DiffFormatter(outputStream);
+        //设置比较器为忽略空白字符对比（Ignores all whitespace）
+        diffFormatter.setDiffComparator(RawTextComparator.WS_IGNORE_ALL);
+        // 这里为什么还要设置它
+        diffFormatter.setRepository(git.getRepository());
+        for(DiffEntry oneDiff : diff){
+            System.out.println( oneDiff );
+            diffFormatter.format( oneDiff );
+            System.out.println( outputStream.toString("UTF-8") );
+            outputStream.reset();
         }
+
+        delLocalBrunch(git, tempMain);
+        delLocalBrunch(git, tempDev);
     }
 
     public static AbstractTreeIterator getAbstractTreeIterator(RevCommit commit, Repository repository ){
@@ -180,6 +187,30 @@ public class GitUtilClass {
             walk.dispose();
             return treeParser;
         }
+    }
+
+    public static void addTagFromBrunch(Git git, String brunch, String tag) throws GitAPIException {
+        String brunchRefName = "refs/heads/" + brunch;
+
+        List<Ref> brunchList = git.branchList().call();
+        Set<String> localBrunchs = new HashSet<>();
+        brunchList.forEach( one -> {
+            localBrunchs.add(one.getName());
+        });
+
+        if (localBrunchs.contains(brunchRefName)) {
+            git.checkout().setName(brunch).call();
+        }else {
+            git.checkout().
+                    setCreateBranch(true).
+                    setName(brunch).
+                    setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK).
+                    setStartPoint("origin/" + brunch).
+                    call();
+        }
+
+        git.tag().setName(tag).call();
+        git.push().setPushTags().call();
     }
 
     public static String checkoutBrunchToLocalTemp(Git git, String remoteBrunch) throws GitAPIException {
