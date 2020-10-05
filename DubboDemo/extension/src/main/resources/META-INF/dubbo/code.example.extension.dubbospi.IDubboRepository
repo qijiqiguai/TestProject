@@ -1,0 +1,2 @@
+dmysql=code.example.extension.dubbospi.impl.DubboMysqlRepository
+dmongo=code.example.extension.dubbospi.impl.DubboMongoRepository
