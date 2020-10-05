@@ -30,7 +30,7 @@ import java.util.ServiceLoader;
 import java.util.concurrent.CompletableFuture;
 
 
-@DubboService(filter = "traceId")
+@DubboService
 public class DemoServiceImpl implements DemoService {
     private static final Logger logger = LoggerFactory.getLogger(DemoServiceImpl.class);
 
