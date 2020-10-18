@@ -17,8 +17,10 @@
 package code.example.provider;
 
 import code.demo.DemoService;
+import code.example.extension.dubbospi.IAdaptiveExt;
 import code.example.extension.dubbospi.IDubboRepository;
 import code.example.extension.javaspi.IJavaRepository;
+import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.config.annotation.DubboService;
 import org.apache.dubbo.rpc.RpcContext;
@@ -48,6 +50,15 @@ public class DemoServiceImpl implements DemoService {
         ExtensionLoader<IDubboRepository> extensionLoader = ExtensionLoader.getExtensionLoader(IDubboRepository.class);
         IDubboRepository extension = extensionLoader.getExtension("dmysql");
         extension.insert(name);
+
+        ExtensionLoader<IAdaptiveExt> extExtensionLoader = ExtensionLoader.getExtensionLoader(IAdaptiveExt.class);
+        IAdaptiveExt adaptiveExt = extExtensionLoader.getAdaptiveExtension();
+        URL url = URL.valueOf("test://localhost/test?adaptiveName=first");
+        System.out.println(adaptiveExt.echo("d", url));
+        URL url2 = URL.valueOf("test://localhost/test?adaptiveName=second");
+        System.out.println(adaptiveExt.echo("d", url2));
+        URL url3 = URL.valueOf("test://localhost/test");
+        System.out.println(adaptiveExt.echo("d", url3));
 
         return "Hello " + name + ", response from provider: " + RpcContext.getContext().getLocalAddress();
     }
