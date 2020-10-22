@@ -1,3 +1,5 @@
 first=code.example.extension.dubbospi.impl.FirstAdaptiveExtImpl
 second=code.example.extension.dubbospi.impl.SecondAdaptiveExtImpl
 third=code.example.extension.dubbospi.impl.ThirdAdaptiveExtImpl
+wrapper1=code.example.extension.dubbospi.impl.AdaptiveExtFirstWrapper
+wrapper2=code.example.extension.dubbospi.impl.AdaptiveExtSecondWrapper

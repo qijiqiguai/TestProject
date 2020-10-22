@@ -53,12 +53,21 @@ public class DemoServiceImpl implements DemoService {
 
         ExtensionLoader<IAdaptiveExt> extExtensionLoader = ExtensionLoader.getExtensionLoader(IAdaptiveExt.class);
         IAdaptiveExt adaptiveExt = extExtensionLoader.getAdaptiveExtension();
-        URL url = URL.valueOf("test://localhost/test?adaptiveName=first");
-        System.out.println(adaptiveExt.echo("d", url));
-        URL url2 = URL.valueOf("test://localhost/test?adaptiveName=second");
-        System.out.println(adaptiveExt.echo("d", url2));
+//        URL url = URL.valueOf("test://localhost/test?adaptiveName=first");
+//        System.out.println(adaptiveExt.echo("d", url));
+//        URL url2 = URL.valueOf("test://localhost/test?adaptiveName=second");
+//        System.out.println(adaptiveExt.echo("d", url2));
         URL url3 = URL.valueOf("test://localhost/test");
-        System.out.println(adaptiveExt.echo("d", url3));
+        System.out.println("DirectRun:" + adaptiveExt.echo("d", url3));
+
+        // 等同于
+        URL url4 = URL.valueOf("test://localhost/test");
+        String extName = url4.getParameter("adaptiveName", "third");
+        System.out.println("ExtName:" + extName);
+        ExtensionLoader<IAdaptiveExt> loader = ExtensionLoader.getExtensionLoader(IAdaptiveExt.class);
+        IAdaptiveExt adaptiveExt2 = loader.getExtension(extName);
+        // extension返回的结果为PayWrapper1
+        System.out.println("RunByName" + adaptiveExt2.echo("d", url4));
 
         return "Hello " + name + ", response from provider: " + RpcContext.getContext().getLocalAddress();
     }
