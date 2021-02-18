@@ -16,7 +16,7 @@ public class RemoteTraceIdFilter implements Filter {
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
         //判断是消费者  还是 服务提供者
-        if (RpcContext.getContext().isConsumerSide()) {
+        if ( null!=RpcContext.getContext().getUrl() && RpcContext.getContext().isConsumerSide()) {
             //消费者 将trace_id（业务流水号） set至上下文中
             String uuid = UUID.randomUUID().toString();
             System.out.println("Set TraceId From Consumer: " + uuid);
@@ -29,7 +29,7 @@ public class RemoteTraceIdFilter implements Filter {
         try {
             return invoker.invoke(invocation);
         } finally {
-            if (RpcContext.getContext().isProviderSide()) {
+            if ( null!=RpcContext.getContext().getUrl() && RpcContext.getContext().isProviderSide()) {
                 // CLEAN
             }
         }
